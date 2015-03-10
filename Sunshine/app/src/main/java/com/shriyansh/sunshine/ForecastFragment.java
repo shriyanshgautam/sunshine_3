@@ -2,9 +2,11 @@ package com.shriyansh.sunshine;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
 import android.support.v4.app.Fragment;
 import android.text.format.Time;
 import android.util.Log;
@@ -67,11 +69,22 @@ public class ForecastFragment extends Fragment {
     }
 
 
+    /**
+     * Called when the Fragment is visible to the user.  This is generally
+     * tied to {@link android.app.Activity#onStart() Activity.onStart} of the containing
+     * Activity's lifecycle.
+     */
+    @Override
+    public void onStart() {
+        super.onStart();
+        updateWeather();
+    }
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         View rootView = inflater.inflate(R.layout.fragment_main, container, false);
-        String forecastList[]={
+        /*String forecastList[]={
                 "Today - Sunny  -  88 / 63",
                 "Monday 16 - Clear  -  45 / 48",
                 "Tuesday 17 - Rain  -  16 / 49",
@@ -84,11 +97,15 @@ public class ForecastFragment extends Fragment {
                 "Thursday 24 - Sunny  -  88 / 63",
                 "Friday 25 - Clear  -  45 / 48",
                 "Saturday 26 - Rain  -  16 / 49"
-        };
+        };*/
 
-        List<String> weekForecast = new ArrayList<String>(Arrays.asList(forecastList));
+        //List<String> weekForecast = new ArrayList<String>(Arrays.asList(forecastList));
 
-        forecastAdapter= new ArrayAdapter<String>(getActivity(),R.layout.list_item_forecast,R.id.list_item_forecast_textview,weekForecast);
+        forecastAdapter= new ArrayAdapter<String>(getActivity(),
+                                                   R.layout.list_item_forecast,
+                                                   R.id.list_item_forecast_textview,
+                                                   new ArrayList<String>());
+
         ListView listView=(ListView)rootView.findViewById(R.id.listview_forecast);
         listView.setAdapter(forecastAdapter);
 
@@ -145,12 +162,17 @@ public class ForecastFragment extends Fragment {
         int id=item.getItemId();
 
         if(id==R.id.action_refresh){
-
-            FetchWeatherTask weatherTask =new FetchWeatherTask();
-            weatherTask.execute("94043");
+            updateWeather();
             return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    public void updateWeather(){
+        FetchWeatherTask weatherTask =new FetchWeatherTask();
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+        String location = prefs.getString(getString(R.string.string_location_key),getString(R.string.location_default_value));
+        weatherTask.execute(location);
     }
 
 
@@ -176,8 +198,22 @@ public class ForecastFragment extends Fragment {
          */
         private String formatHighLows(double high, double low) {
         // For presentation, assume the user doesn't care about tenths of a degree.
+
+
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(getActivity());
+            String unitType = prefs.getString(getString(R.string.pref_units_key),getString(R.string.pref_default_units_metric));
+
+            if(unitType.equals(getString(R.string.pref_default_units_imperial))){
+                high=(high*1.8)+ 32;
+                low= (low*1.8) + 32;
+
+            }else if(!unitType.equals(getString(R.string.pref_default_units_metric))){
+                Log.d(LOG_TAG,"Unit Type not found"+unitType);
+            }
+
             long roundedHigh = Math.round(high);
             long roundedLow = Math.round(low);
+
 
             String highLowStr = roundedHigh + "/" + roundedLow;
             return highLowStr;
